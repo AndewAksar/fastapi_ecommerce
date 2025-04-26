@@ -2,7 +2,7 @@ from fastapi import APIRouter
 
 router = APIRouter(prefix="/products", tags=["products"])
 
-
+# get all products
 @router.get("/")
 async def get_all_products():
     pass
