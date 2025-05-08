@@ -12,13 +12,13 @@ from app.models.user import User
 from app.schemas import CreateUser
 from app.backend.db_depends import get_db
 
-
 SECRET_KEY = 'e1d73525f5cf6009603ce3d52c5640d4069b65f877d8b1fdfe2bd0387a4473dc'
 ALGORITHM = 'HS256'
 
 router = APIRouter(prefix='/auth', tags=['auth'])
 bcrypt_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='auth/token')
+
 
 async def create_access_token(
         username: str,
