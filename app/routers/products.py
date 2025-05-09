@@ -25,30 +25,42 @@ async def get_all_products(db: Annotated[AsyncSession, Depends(get_db)]):
     else:
         return all_products
 
+# Метод создания товара. Разрешен доступ администраторам и продавцам.
 @router.post("/", status_code=status.HTTP_201_CREATED)
-async def create_product(db: Annotated[AsyncSession, Depends(get_db)], create_product: CreateProduct):
-    category = await db.scalar(select(Category).where(Category.id == create_product.category))
-    if category is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Category not found!"
-        )
+async def create_product(
+        db: Annotated[AsyncSession, Depends(get_db)],
+        create_product: CreateProduct,
+        get_user: Annotated[dict, Depends(get_current_user)]
+):
+    if get_user.get('admin') or get_user.get('supplier'):
+        category = await db.scalar(select(Category).where(Category.id == create_product.category))
+        if category is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Category not found!"
+            )
+        else:
+            await db.execute(insert(Product).values(
+                name=create_product.name,
+                description=create_product.description,
+                price=create_product.price,
+                image_url=create_product.image_url,
+                stock=create_product.stock,
+                category_id=create_product.category,
+                supplier_id=get_user.get('id'),
+                slug=slugify(create_product.name),
+                is_active=True)
+            )
+            await db.commit()
+            return {
+                "status_code": status.HTTP_201_CREATED,
+                "transaction": "Product has been created successfully!"
+            }
     else:
-        await db.execute(insert(Product).values(
-            name=create_product.name,
-            description=create_product.description,
-            price=create_product.price,
-            image_url=create_product.image_url,
-            stock=create_product.stock,
-            category_id=create_product.category,
-            slug=slugify(create_product.name),
-            is_active=True)
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to use this method"
         )
-        await db.commit()
-        return {
-            "status_code": status.HTTP_201_CREATED,
-            "transaction": "Product has been created successfully!"
-        }
 
 @router.get("/{category_slug}")
 async def product_by_category(db: Annotated[AsyncSession, Depends(get_db)], category_slug: str):
