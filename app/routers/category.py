@@ -13,18 +13,20 @@ from app.models import Category
 router = APIRouter(prefix="/category", tags=["category"])
 
 
+# Получение всех категорий.
 @router.get("/")
 async def get_all_categories(db: Annotated[AsyncSession, Depends(get_db)]):
     categories = await db.scalars(select(Category).where(Category.is_active == True))
     return categories.all()
 
-@router.post("/", status_code=status.HTTP_201_CREATED)
+# Создание категории. Разрешено только для админа.
+@router.post("/")
 async def create_category(
         db: Annotated[AsyncSession, Depends(get_db)],
         create_category: CreateCategory,
         get_user: Annotated[dict, Depends(get_current_user)]
 ):
-    if get_user.get('admin'):
+    if get_user.get('is_admin'):
         await db.execute(insert(Category).values(
             name=create_category.name,
             parent_id=create_category.parent_id,
@@ -47,7 +49,7 @@ async def put_category(
         category_slug: str, update_category: CreateCategory,
         get_user: Annotated[dict, Depends(get_current_user)]
 ):
-    if get_user.get('admin'):
+    if get_user.get('is_admin'):
         category = await db.scalars(select(Category).where(Category.slug == category_slug))
         if category is None:
             raise HTTPException(
@@ -76,7 +78,7 @@ async def delete_category(
         category_slug: str,
         get_user: Annotated[dict, Depends(get_current_user)]
 ):
-    if get_user.get('admin'):
+    if get_user.get('is_admin'):
         category = await db.scalars(select(Category).where(Category.slug == category_slug, Category.is_active == True))
         if category is None:
             raise HTTPException(
