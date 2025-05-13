@@ -4,6 +4,7 @@ from sqlalchemy.orm import relationship
 from app.backend.db import Base
 from app.models.products import Product
 
+
 class Category(Base):
     __tablename__ = "categories"
     __table_args__ = {'extend_existing': True}
