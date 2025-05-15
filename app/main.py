@@ -1,11 +1,14 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from app.routers.v1 import auth, category, permission, products, reviews
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
+from starlette.middleware.gzip import GZipMiddleware
 import os
 
+from app.routers.v1 import auth, category, permission, products, reviews
 
 # Создаём основное приложение
 app = FastAPI(
@@ -42,12 +45,16 @@ app_v1.include_router(reviews.router)
 # Монтируем подприложения к основному приложению
 app.mount('/v1', app_v1)
 
+# Добавляем HTTPSRedirectMiddleware (только в продакшн-среде)
+if os.getenv("ENVIRONMENT") == "production":
+    app.add_middleware(HTTPSRedirectMiddleware)
+
 # Настройка CORS
 origins = [
-    "http://localhost:3000",
     "https://example.com"
 ]
 
+# Добавляем CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,          # Разрешённые источники
@@ -55,6 +62,14 @@ app.add_middleware(
     allow_methods=["*"],            # Разрешённые методы (GET, POST, PUT, DELETE и т.д.)
     allow_headers=["*"]             # Разрешённые заголовки
 )
+
+# Настройка TrustedHostMiddleware
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=["example.com", "*.example.com"])     # Разрешённые хосты
+
+# Настройка GZipMiddleware
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 
 # Запуск приложения (если запускаем как скрипт)
