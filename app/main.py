@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from app.logging_config import configure_logging, log_middleware
 from app.routes import setup_routes
 from app.middleware import add_middlewares
+from app.timing import TimingMiddleWare
 
 
 # Настройка логирования
@@ -17,6 +18,7 @@ app = FastAPI(
         {"url": "/v1", "description": "Version 1"}
     ]
 )
+app.add_middleware(TimingMiddleWare)
 
 # Добавляем middleware для логирования
 app.middleware("http")(log_middleware)
