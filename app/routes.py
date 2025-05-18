@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import os
 
-from app.routers.v1 import auth, category, permission, products, reviews
+from app.routers.v1 import auth, category, permission, products, reviews, session
 
 
 def setup_routes(app: FastAPI):
@@ -29,6 +29,7 @@ def setup_routes(app: FastAPI):
     app_v1.include_router(auth.router)
     app_v1.include_router(permission.router)
     app_v1.include_router(reviews.router)
+    app_v1.include_router(session.router)
 
     # Монтируем подприложения к основному приложению
     app.mount('/v1', app_v1)
