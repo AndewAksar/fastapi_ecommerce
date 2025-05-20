@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Request
 
-router = APIRouter()
+
+router = APIRouter(prefix="/sessions", tags=["sessions"])
 
 
 # Определяем маршруты для работы с сессиями

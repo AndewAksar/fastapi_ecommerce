@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 import os
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.sessions import SessionMiddleware

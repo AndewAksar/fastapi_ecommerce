@@ -1,5 +1,6 @@
 from pydantic import BaseModel, confloat, validator
 
+
 class CreateProduct(BaseModel):
     name: str
     description: str

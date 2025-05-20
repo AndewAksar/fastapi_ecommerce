@@ -5,23 +5,22 @@ from fastapi.templating import Jinja2Templates
 import os
 
 from app.routers.v1 import auth, category, permission, products, reviews, session
+from app.tasks import call_background_task
 
 
-def setup_routes(app: FastAPI):
-    # Монтируем статические файлы из директории 'static' по пути '/static'
-    app.mount("/static", StaticFiles(directory="static"), name="static")
-
+def setup_routers(app: FastAPI):
     # Настройка шаблонизатора Jinja2
     templates_dir = os.path.join(os.path.dirname(__file__), "templates")
     templates = Jinja2Templates(directory=templates_dir)
 
-    # Определяем маршрут приветствия для основного приложения
-    @app.get("/", response_class=HTMLResponse)
-    async def welcome(request: Request):
-        return templates.TemplateResponse("test_cors.html", {"request": request})
-
     # Создаём подприложение для версии v1
     app_v1 = FastAPI()
+
+    # Запуск асинхронной задачи Celery
+    @app_v1.get("/")
+    async def hello_world(message: str = None):
+        call_background_task.delay(message)
+        return {'message': f'Hello World! {message}'}
 
     # Добавляем маршруты к подприложению v1
     app_v1.include_router(category.router)
@@ -33,3 +32,8 @@ def setup_routes(app: FastAPI):
 
     # Монтируем подприложения к основному приложению
     app.mount('/v1', app_v1)
+
+    # Определяем маршрут для корневого пути с кнопкой для перехода на /v1/
+    @app.get("/redirect", response_class=HTMLResponse)
+    async def redirect_to_v1(request: Request):
+        return templates.TemplateResponse("redirect.html", {"request": request})
