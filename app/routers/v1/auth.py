@@ -7,6 +7,7 @@ from typing import Annotated
 from passlib.context import CryptContext
 from datetime import datetime, timedelta, timezone
 import jwt
+from jwt import PyJWTError
 
 from app.models.user import User
 from app.schemas import CreateUser
@@ -86,7 +87,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail='Token has expired'
         )
-    except jwt.exceptions:
+    except PyJWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail='Could not validate user'
