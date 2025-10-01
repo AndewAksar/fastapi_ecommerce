@@ -50,15 +50,15 @@ async def put_category(
         get_user: Annotated[dict, Depends(get_current_user)]
 ):
     if get_user.get('is_admin'):
-        category = await db.scalars(select(Category).where(Category.slug == category_slug))
+        category = await db.scalar(select(Category).where(Category.slug == category_slug))
         if category is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Category is no found"
             )
         else:
-            category.name = update_category.name,
-            category.parent_id = update_category.parent_id,
+            category.name = update_category.name
+            category.parent_id = update_category.parent_id
             category.slug = slugify(update_category.name)
         
             await db.commit()
@@ -79,7 +79,7 @@ async def delete_category(
         get_user: Annotated[dict, Depends(get_current_user)]
 ):
     if get_user.get('is_admin'):
-        category = await db.scalars(select(Category).where(Category.slug == category_slug, Category.is_active == True))
+        category = await db.scalar(select(Category).where(Category.slug == category_slug, Category.is_active == True))
         if category is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
