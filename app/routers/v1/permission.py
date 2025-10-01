@@ -43,7 +43,7 @@ async def supplier_permission(
     else:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail='You are not admin! F*CK YOU!'
+            detail='You are not an admin'
         )
 
 @router.delete('/delete')
@@ -65,6 +65,8 @@ async def delete(
                 detail='You can not delete admin user'
             )
         else:
+            user.is_active = False
+            await db.commit()
             return {
                 'status': status.HTTP_200_OK,
                 'detail': 'User is deleted successfully'
