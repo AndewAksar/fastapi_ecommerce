@@ -33,17 +33,18 @@
    ```
 
 4. **Настройте переменные окружения:**
-   Проект использует Redis в качестве брокера Celery и PostgreSQL для базы данных. Приложение ожидает, что строка подключения к базе данных будет передана через переменную окружения `DATABASE_URL`, иначе запуск завершится с понятной ошибкой. Удобно скопировать файл `.env.example` в `.env`, задать собственные значения и выполнить `source .env`.
-
-   Минимальный набор переменных выглядит так:
+   Проект использует Redis в качестве брокера Celery и PostgreSQL для базы данных. Приложение ожидает, что строка подключения к базе данных будет передана через переменную окружения `DATABASE_URL`, иначе запуск завершится с понятной ошибкой.
+   Скопируйте файл `.env.example` в `.env`, задайте собственные значения и выполните `source .env`. В примере собраны ключевые переменные:
    ```bash
-   export CELERY_BROKER_URL="redis://localhost:6379/0"
-   export CELERY_RESULT_BACKEND="redis://localhost:6379/0"
-   export DATABASE_URL="postgresql+asyncpg://ecommerce:1234@localhost:5432/ecommerce"
+   SECRET_KEY="..."                # секрет для подписи JWT
+   SESSION_SECRET="..."            # секрет сессий Starlette
+   CELERY_BROKER_URL="redis://localhost:6379/0"
+   CELERY_RESULT_BACKEND="redis://localhost:6379/0"
+   CORS_ORIGINS="https://example.com,https://another.example"  # разделитель - запятая
+   DATABASE_URL="postgresql+asyncpg://ecommerce:1234@localhost:5432/ecommerce"
    ```
 
-   Убедитесь, что сервисы Redis и PostgreSQL доступны по указанным адресам или укажите свои значения.
-
+   Убедитесь, что сервисы Redis и PostgreSQL доступны по указанным адресам или укажите свои значения. Для production-окружения обязательно замените секреты на уникальные.
 5. **Примените миграции базы данных:**
    Выполняйте команды из корня проекта. Если используется Alembic по умолчанию, достаточно запустить:
 

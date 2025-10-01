@@ -12,8 +12,10 @@ from jwt import PyJWTError
 from app.models.user import User
 from app.schemas import CreateUser
 from app.backend.db_depends import get_db
+from app.core.settings import settings
 
-SECRET_KEY = 'e1d73525f5cf6009603ce3d52c5640d4069b65f877d8b1fdfe2bd0387a4473dc'
+
+
 ALGORITHM = 'HS256'
 
 router = APIRouter(prefix='/auth', tags=['auth'])
@@ -40,11 +42,11 @@ async def create_access_token(
 
     # Преобразование datetime в timestamp (количество секунд с начала эпохи)
     payload['exp'] = int(payload['exp'].timestamp())
-    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode(payload, settings.secret_key, algorithm=ALGORITHM)
 
 async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, settings.secret_key, algorithms=[ALGORITHM])
         username: str | None = payload.get('sub')
         user_id: int | None = payload.get('id')
         is_admin: bool | None = payload.get('is_admin')
