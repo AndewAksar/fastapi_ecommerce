@@ -2,16 +2,20 @@ from fastapi import FastAPI, Request, Form, Depends, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from loguru import logger
 from uuid import uuid4
+import os
+
 
 
 # Инициализируем логирование
 def configure_logging():
+    log_path = os.path.join('/tmp', 'info.log')
     logger.add(
-        "info.log",
+        log_path,
         format="Log: [{extra[log_id]}:{time} - {level} - {message}]",
         level="INFO",
         enqueue=True
     )
+
 
 # Добавляем функцию логирования в FastAPI
 async def log_middleware(request: Request, call_next):

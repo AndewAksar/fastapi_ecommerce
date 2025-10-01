@@ -45,7 +45,8 @@ async def create_category(
 @router.put("/{category_slug}")
 async def put_category(
         db: Annotated[AsyncSession, Depends(get_db)],
-        category_slug: str, update_category: CreateCategory,
+        category_slug: str,
+        update_category: CreateCategory,
         get_user: Annotated[dict, Depends(get_current_user)]
 ):
     if get_user.get('is_admin'):

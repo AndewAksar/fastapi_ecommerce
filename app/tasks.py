@@ -5,6 +5,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Определение задачи для выполнения в фоновом режиме
 @shared_task()
 def call_background_task(message):
     try:
@@ -15,3 +16,5 @@ def call_background_task(message):
     except Exception as e:
         logger.error(f"Error in call_background_task: {e}")
         raise
+
+

@@ -3,6 +3,7 @@ from sqlalchemy.orm import relationship
 
 from app.backend.db import Base
 from app.models.products import Product
+from app.models.reviews import Review
 
 
 class Category(Base):
@@ -20,3 +21,4 @@ class Category(Base):
 from sqlalchemy.schema import CreateTable
 print(CreateTable(Category.__table__))
 print(CreateTable(Product.__table__))
+print(CreateTable(Review.__table__))
