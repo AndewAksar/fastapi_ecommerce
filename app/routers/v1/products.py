@@ -17,7 +17,7 @@ router = APIRouter(prefix="/products", tags=["products"])
 async def get_all_products(db: Annotated[AsyncSession, Depends(get_db)]):
     products = await db.scalars(select(Product).where(Product.is_active == True, Product.stock > 0))
     all_products = products.all()
-    if all_products is None:
+    if not all_products:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Product not found!"
@@ -32,7 +32,7 @@ async def create_product(
         create_product: CreateProduct,
         get_user: Annotated[dict, Depends(get_current_user)]
 ):
-    if get_user.get('is_admin') or get_user.get('supplier'):
+    if get_user.get('is_admin') or get_user['is_supplier']:
         category = await db.scalar(select(Category).where(Category.id == create_product.category))
         if category is None:
             raise HTTPException(
@@ -72,16 +72,17 @@ async def product_by_category(db: Annotated[AsyncSession, Depends(get_db)], cate
             detail="Category not found!"
         )
     else:
-        subcategories = await db.scalars(select(Category).where(Category.parent_id == category.id)).all()
+        subcategories_result = await db.scalars(select(Category).where(Category.parent_id == category.id))
+        subcategories = subcategories_result.all()
         categories_and_subcategories = [category.id] + [i.id for i in subcategories]
-        product = await db.scalars(
+        products_result = await db.scalars(
             select(Product).where(
                 Product.category_id.in_(categories_and_subcategories),
                 Product.is_active == True,
                 Product.stock > 0
             )
         )
-        return product.all()
+        return products_result.all()
 
 # Метод получения детальной информации о товаре. Разрешен доступ всем.
 @router.get("/detail/{product_slug}")
@@ -110,7 +111,7 @@ async def update_product(
         get_user: Annotated[dict, Depends(get_current_user)]
 ):
     if get_user.get('is_admin') or get_user.get('is_supplier'):
-        product = await db.scalars(select(Product).where(Product.slug == product_slug))
+        product = await db.scalar(select(Product).where(Product.slug == product_slug))
         if product is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -124,13 +125,13 @@ async def update_product(
                     detail="Category not found!"
                 )
             else:
-                product.name = update_product.name,
-                product.description = update_product.description,
-                product.price = update_product.price,
-                product.image_url = update_product.image_url,
-                product.stock = update_product.stock,
-                product.category_id = update_product.category,
-                product.slug = slugify(update_product.name),
+                product.name = update_product.name
+                product.description = update_product.description
+                product.price = update_product.price
+                product.image_url = update_product.image_url
+                product.stock = update_product.stock
+                product.category_id = update_product.category
+                product.slug = slugify(update_product.name)
                 product.is_active = True
 
                 await db.commit()
