@@ -45,6 +45,7 @@ async def add_review(
         get_user: Annotated[dict, Depends(get_current_user)]
 ):
     if get_user:
+        user_id = get_user['id']
         product = await db.scalar(select(Product).where(Product.id == create_review.product_id))
         if product is None:
             raise HTTPException(
@@ -55,7 +56,7 @@ async def add_review(
             # Проверка наличия существующего отзыва от пользователя для данного продукта
             existing_review = await db.scalar(
                 select(Review).
-                where(Review.user_id == get_user.get('id'), Review.product_id == create_review.product_id)
+                where(Review.user_id == user_id, Review.product_id == create_review.product_id)
             )
             if existing_review:
                 raise HTTPException(
@@ -64,7 +65,7 @@ async def add_review(
                 )
             else:
                 await db.execute(insert(Review).values(
-                    user_id=get_user.get('id'),
+                    user_id=user_id,
                     product_id=create_review.product_id,
                     comment=create_review.comment,
                     grade=create_review.grade,

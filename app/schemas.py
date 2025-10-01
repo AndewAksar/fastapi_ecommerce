@@ -22,14 +22,12 @@ class CreateUser(BaseModel):
 
 """
 Класс для создания отзыва, включает в себя следующие поля:
-    user_id: числовое поле
     product_id: числовое поле
-    comment: текстовое поле
+    comment: текстовое поле (необязательное)
     grade: числовое поле
     is_active: логическое поле
 """
 class CreateReview(BaseModel):
-    user_id: int
     product_id: int
     comment: str = None
     grade: confloat(ge=1, le=5)
