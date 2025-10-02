@@ -1,23 +1,30 @@
-from fastapi import FastAPI
+from typing import Sequence
+
 import os
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
+from app.core.settings import settings
 
-def add_middlewares(app: FastAPI):
+
+def add_middlewares(
+    app: FastAPI,
+    *,
+    cors_origins: Sequence[str] | None = None,
+    session_secret: str | None = None,
+) -> None:
     # Добавляем middleware для сессий
-    app.add_middleware(SessionMiddleware, secret_key="secret-key-1234")
+    app.add_middleware(SessionMiddleware, secret_key=session_secret or settings.session_secret)
 
     # Добавляем HTTPSRedirectMiddleware (только в продакшн-среде)
     if os.getenv("ENVIRONMENT") == "production":
         app.add_middleware(HTTPSRedirectMiddleware)
 
     # Настройка CORS
-    origins = [
-        "https://example.com"
-    ]
+    origins = list(cors_origins or settings.cors_origins)
 
     # Добавляем CORS middleware
     app.add_middleware(

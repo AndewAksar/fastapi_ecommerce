@@ -11,6 +11,7 @@ from app.logging_config import configure_logging, log_middleware
 from app.main_routers import setup_routers
 from app.middleware import add_middlewares
 from app.timing import TimingMiddleWare
+from app.core.settings import settings
 
 
 
@@ -37,15 +38,17 @@ app = FastAPI(
     ]
 )
 
+
 # регистрация приложения админки
 app.mount("/admin", admin_app)
 
+
 # Создаем экземпляр Celery
-celery = Celery(
-    'main',
-    broker='redis://localhost:6379/0',
-    backend='redis://localhost:6379/0',
-    broker_connection_retry_on_startup=True
+celery = Celery('main')
+celery.conf.update(
+    broker_url=settings.celery_broker_url,
+    result_backend=settings.celery_result_backend,
+    broker_connection_retry_on_startup=True,
 )
 
 
@@ -76,7 +79,11 @@ app.middleware("http")(log_middleware)
 
 
 # Настройка middleware
-add_middlewares(app)
+add_middlewares(
+    app,
+    cors_origins=settings.cors_origins,
+    session_secret=settings.session_secret,
+)
 
 
 # Настройка маршрутов

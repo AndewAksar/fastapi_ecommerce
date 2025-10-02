@@ -14,29 +14,29 @@ from app.backend.db import async_session_maker
 
 @register(User, sqlalchemy_sessionmaker=async_session_maker)
 class UserAdmin(SqlAlchemyModelAdmin):
-    exclude = ("hash_password",)
-    list_display = ("id", "username", "is_superuser", "is_active")
+    exclude = ("hashed_password",)
+    list_display = ("id", "username", "is_admin", "is_active")
     list_display_links = ("id", "username")
-    list_filter = ("id", "username", "is_superuser", "is_active")
+    list_filter = ("id", "username", "is_admin", "is_active")
     search_fields = ("username",)
 
     async def authenticate(self, username: str, password: str) -> uuid.UUID | int | None:
         sessionmaker = self.get_sessionmaker()
         async with sessionmaker() as session:
-            query = select(self.model_cls).filter_by(username=username, password=password, is_superuser=True)
+            query = select(self.model_cls).filter_by(username=username, is_admin=True)
             result = await session.scalars(query)
             obj = result.first()
             if not obj:
                 return None
-            if not bcrypt.checkpw(password.encode(), obj.hash_password.encode()):
+            if not bcrypt.checkpw(password.encode(), obj.hashed_password.encode()):
                 return None
             return obj.id
 
     async def change_password(self, id: uuid.UUID | int, password: str) -> None:
         sessionmaker = self.get_sessionmaker()
         async with sessionmaker() as session:
-            hash_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-            query = update(self.model_cls).where(User.id.in_([id])).values(hash_password=hash_password)
+            hashed_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+            query = update(self.model_cls).where(User.id.in_([id])).values(hashed_password=hashed_password)
             await session.execute(query)
             await session.commit()
 
