@@ -46,6 +46,10 @@
 - Некоторые модели (`app/models/category.py`) печатают DDL при импорте. Это приводит к шуму в логах и может тормозить cold start.
 - FastAdmin и Celery требуют соответствующих зависимостей из `requirements.txt`.
 
+## Требования к контрактам API
+- Публичные списки товаров и отзывов (см. `app/routers/v1/products.py`, `app/routers/v1/reviews.py`) должны возвращать структуру `items/total/limit/offset` через схемы `ProductListResponse` и `ReviewListResponse`. При пустой выборке возвращайте пустой список без HTTP 404.
+- Фильтры по цене обязаны проверять, что `min_price <= max_price`; при нарушении возвращайте HTTP 422.
+
 ## Советы для доработок
 - Вынести конфиги (DB, Redis, Celery) в `.env` и использовать Pydantic Settings.
 - Добавить миграции (Alembic) и тесты для основных сценариев.

@@ -1,44 +1,137 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, insert, update, func
-from typing import Annotated
+from sqlalchemy import func, insert, select, update
+from typing import Annotated, Any
 
 from app.routers.v1.auth import get_current_user
 from app.backend.db_depends import get_db
 from app.models.reviews import Review
 from app.models.products import Product
-from app.schemas import CreateReview
-from app.schemas import CreateReview, MessageResponse, ReviewRead
+from app.schemas import CreateReview, MessageResponse, ReviewListResponse, ReviewRead
 
 router = APIRouter(prefix="/reviews", tags=["reviews"])
 
 
 # Получение полного перечня отзывов. Разрешен доступ всем.
-@router.get("/", response_model=list[ReviewRead])
-async def all_reviews(db: AsyncSession = Depends(get_db)):
-    reviews = await db.scalars(select(Review).where(Review.is_active == True))
-    all_reviews = reviews.all()
-    return [ReviewRead.model_validate(review) for review in all_reviews]
+@router.get("/", response_model=ReviewListResponse)
+async def all_reviews(
+        db: Annotated[AsyncSession, Depends(get_db)],
+        limit: int = Query(10, ge=1, le=100, description="Количество отзывов на странице"),
+        offset: int = Query(0, ge=0, description="Смещение выборки для пагинации"),
+        search: str | None = Query(None, description="Поиск по тексту отзыва"),
+        min_price: int | None = Query(None, ge=0, description="Минимальная цена товара"),
+        max_price: int | None = Query(None, ge=0, description="Максимальная цена товара"),
+):
+    """Формируем список отзывов с учётом фильтров и пагинации."""
+
+    # Проверяем корректность диапазона цен до обращения к базе данных.
+    if (
+        min_price is not None
+        and max_price is not None
+        and min_price > max_price
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="min_price must be less than or equal to max_price",
+        )
+
+    review_filters = [Review.is_active == True]
+
+    if search:
+        review_filters.append(Review.comment.ilike(f"%{search}%"))
+
+    price_filters: list[Any] = []
+    if min_price is not None:
+        price_filters.append(Product.price >= min_price)
+    if max_price is not None:
+        price_filters.append(Product.price <= max_price)
+
+    total_stmt = select(func.count()).select_from(Review).where(*review_filters)
+    reviews_stmt = select(Review).where(*review_filters)
+
+    # Для фильтров по цене требуется присоединить таблицу товаров.
+    if price_filters:
+        total_stmt = total_stmt.join(Product, Review.product_id == Product.id).where(*price_filters)
+        reviews_stmt = reviews_stmt.join(Product, Review.product_id == Product.id).where(*price_filters)
+
+    total = await db.scalar(total_stmt)
+
+    reviews_stmt = (
+        reviews_stmt
+        .order_by(Review.id.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    reviews = await db.scalars(reviews_stmt)
+
+    items = [ReviewRead.model_validate(review) for review in reviews.all()]
+
+    return ReviewListResponse(
+        items=items,
+        total=total or 0,
+        limit=limit,
+        offset=offset,
+    )
 
 # Получение отзывов по слагу товара. Разрешен доступ всем.
-@router.get("/{product_slug}", response_model=list[ReviewRead])
-async def products_reviews(product_slug: str, db: AsyncSession = Depends(get_db)):
+@router.get("/{product_slug}", response_model=ReviewListResponse)
+async def products_reviews(
+        product_slug: str,
+        db: Annotated[AsyncSession, Depends(get_db)],
+        limit: int = Query(10, ge=1, le=100, description="Количество отзывов на странице"),
+        offset: int = Query(0, ge=0, description="Смещение выборки для пагинации"),
+        search: str | None = Query(None, description="Поиск по тексту отзыва"),
+        min_price: int | None = Query(None, ge=0, description="Минимальная цена товара"),
+        max_price: int | None = Query(None, ge=0, description="Максимальная цена товара"),
+):
     product = await db.scalar(select(Product).where(Product.slug == product_slug))
     if product is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Product not found!"
         )
-    else:
-        reviews = await db.scalars(select(Review).where(Review.product_id == product.id, Review.is_active == True))
-        reviews_list = reviews.all()
-        if not reviews_list:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Review not found!"
-            )
-        else:
-            return [ReviewRead.model_validate(review) for review in reviews_list]
+
+    if (
+        min_price is not None
+        and max_price is not None
+        and min_price > max_price
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="min_price must be less than or equal to max_price",
+        )
+
+    # Быстрый выход: если цена товара не удовлетворяет фильтрам, отзывов не будет.
+    if min_price is not None and product.price < min_price:
+        return ReviewListResponse(items=[], total=0, limit=limit, offset=offset)
+    if max_price is not None and product.price > max_price:
+        return ReviewListResponse(items=[], total=0, limit=limit, offset=offset)
+
+    review_filters = [Review.is_active == True, Review.product_id == product.id]
+
+    if search:
+        review_filters.append(Review.comment.ilike(f"%{search}%"))
+
+    total_stmt = select(func.count()).select_from(Review).where(*review_filters)
+    total = await db.scalar(total_stmt)
+
+    reviews_stmt = (
+        select(Review)
+        .where(*review_filters)
+        .order_by(Review.id.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    reviews = await db.scalars(reviews_stmt)
+
+    items = [ReviewRead.model_validate(review) for review in reviews.all()]
+
+    return ReviewListResponse(
+        items=items,
+        total=total or 0,
+        limit=limit,
+        offset=offset,
+    )
 
 # Добавление отзыва. Разрешен доступ только авторизованным пользователям.
 @router.post("/", response_model=MessageResponse, status_code=status.HTTP_201_CREATED)
