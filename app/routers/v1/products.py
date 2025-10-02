@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import insert, select
+from sqlalchemy import func, insert, or_, select
 from typing import Annotated
 from slugify import slugify
 
 from app.routers.v1.auth import get_current_user
-from app.schemas import CreateProduct, MessageResponse, ProductRead
+from app.schemas import CreateProduct, MessageResponse, ProductListResponse, ProductRead
 from app.backend.db_depends import get_db
 from app.models import Product, Category
 
@@ -13,17 +13,64 @@ router = APIRouter(prefix="/products", tags=["products"])
 
 
 # Метод получения всех товаров. Разрешен доступ всем.
-@router.get("/", response_model=list[ProductRead])
-async def get_all_products(db: Annotated[AsyncSession, Depends(get_db)]):
-    products = await db.scalars(select(Product).where(Product.is_active == True, Product.stock > 0))
-    all_products = products.all()
-    if not all_products:
+@router.get("/", response_model=ProductListResponse)
+async def get_all_products(
+        db: Annotated[AsyncSession, Depends(get_db)],
+        limit: int = Query(10, ge=1, le=100, description="Количество элементов на странице"),
+        offset: int = Query(0, ge=0, description="Смещение выборки для пагинации"),
+        search: str | None = Query(None, description="Поиск по названию и описанию товара"),
+        min_price: int | None = Query(None, ge=0, description="Минимальная цена"),
+        max_price: int | None = Query(None, ge=0, description="Максимальная цена"),
+):
+    """Возвращаем список товаров с учётом фильтров и пагинации."""
+
+    # Валидируем диапазон цен, чтобы не строить заведомо пустой запрос к БД.
+    if (
+        min_price is not None
+        and max_price is not None
+        and min_price > max_price
+    ):
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Product not found!"
-            )
-    else:
-        return [ProductRead.model_validate(product) for product in all_products]
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="min_price must be less than or equal to max_price",
+        )
+
+    filters = [Product.is_active == True, Product.stock > 0]
+
+    # Добавляем условия поиска по тексту, если передан параметр.
+    if search:
+        search_pattern = f"%{search}%"
+        filters.append(or_(
+            Product.name.ilike(search_pattern),
+            Product.description.ilike(search_pattern)
+        ))
+
+    # Ограничения по цене задаются только если пользователь их указал.
+    if min_price is not None:
+        filters.append(Product.price >= min_price)
+    if max_price is not None:
+        filters.append(Product.price <= max_price)
+
+    total_stmt = select(func.count()).select_from(Product).where(*filters)
+    total = await db.scalar(total_stmt)
+
+    products_stmt = (
+        select(Product)
+        .where(*filters)
+        .order_by(Product.id)
+        .limit(limit)
+        .offset(offset)
+    )
+    products = await db.scalars(products_stmt)
+
+    items = [ProductRead.model_validate(product) for product in products.all()]
+
+    return ProductListResponse(
+        items=items,
+        total=total or 0,
+        limit=limit,
+        offset=offset,
+    )
 
 # Метод создания товара. Разрешен доступ администраторам и продавцам.
 @router.post("/", status_code=status.HTTP_201_CREATED, response_model=MessageResponse)
@@ -63,8 +110,16 @@ async def create_product(
         )
 
 # Метод получения товаров определенной категории. Разрешен доступ всем.
-@router.get("/{category_slug}", response_model=list[ProductRead])
-async def product_by_category(db: Annotated[AsyncSession, Depends(get_db)], category_slug: str):
+@router.get("/{category_slug}", response_model=ProductListResponse)
+async def product_by_category(
+        db: Annotated[AsyncSession, Depends(get_db)],
+        category_slug: str,
+        limit: int = Query(10, ge=1, le=100, description="Количество элементов на странице"),
+        offset: int = Query(0, ge=0, description="Смещение выборки для пагинации"),
+        search: str | None = Query(None, description="Поиск по названию и описанию товара"),
+        min_price: int | None = Query(None, ge=0, description="Минимальная цена"),
+        max_price: int | None = Query(None, ge=0, description="Максимальная цена"),
+):
     category = await db.scalar(select(Category).where(Category.slug == category_slug, Category.is_active == True))
     if category is None:
         raise HTTPException(
@@ -72,18 +127,58 @@ async def product_by_category(db: Annotated[AsyncSession, Depends(get_db)], cate
             detail="Category not found!"
         )
     else:
+        if (
+            min_price is not None
+            and max_price is not None
+            and min_price > max_price
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="min_price must be less than or equal to max_price",
+            )
+
         subcategories_result = await db.scalars(select(Category).where(Category.parent_id == category.id))
         subcategories = subcategories_result.all()
         categories_and_subcategories = [category.id] + [i.id for i in subcategories]
-        products_result = await db.scalars(
-            select(Product).where(
-                Product.category_id.in_(categories_and_subcategories),
-                Product.is_active == True,
-                Product.stock > 0
-            )
+
+        filters = [
+            Product.category_id.in_(categories_and_subcategories),
+            Product.is_active == True,
+            Product.stock > 0,
+        ]
+
+        # Переиспользуем логику фильтрации по тексту и диапазону цен.
+        if search:
+            search_pattern = f"%{search}%"
+            filters.append(or_(
+                Product.name.ilike(search_pattern),
+                Product.description.ilike(search_pattern)
+            ))
+        if min_price is not None:
+            filters.append(Product.price >= min_price)
+        if max_price is not None:
+            filters.append(Product.price <= max_price)
+
+        total_stmt = select(func.count()).select_from(Product).where(*filters)
+        total = await db.scalar(total_stmt)
+
+        products_stmt = (
+            select(Product)
+            .where(*filters)
+            .order_by(Product.id)
+            .limit(limit)
+            .offset(offset)
         )
-        products = products_result.all()
-        return [ProductRead.model_validate(product) for product in products]
+        products = await db.scalars(products_stmt)
+
+        items = [ProductRead.model_validate(product) for product in products.all()]
+
+        return ProductListResponse(
+            items=items,
+            total=total or 0,
+            limit=limit,
+            offset=offset,
+        )
 
 # Метод получения детальной информации о товаре. Разрешен доступ всем.
 @router.get("/detail/{product_slug}", response_model=ProductRead)

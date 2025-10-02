@@ -29,6 +29,15 @@ class ProductRead(BaseModel):
         from_attributes = True
 
 
+class ProductListResponse(BaseModel):
+    """Список товаров с метаинформацией для пагинации."""
+
+    items: list[ProductRead]
+    total: int
+    limit: int
+    offset: int
+
+
 class CreateCategory(BaseModel):
     name: str
     parent_id: int | None = None
@@ -77,6 +86,15 @@ class ReviewRead(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class ReviewListResponse(BaseModel):
+    """Список отзывов с данными о пагинации."""
+
+    items: list[ReviewRead]
+    total: int
+    limit: int
+    offset: int
 
 
 class MessageResponse(BaseModel):
