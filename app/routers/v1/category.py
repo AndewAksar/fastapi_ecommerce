@@ -6,20 +6,21 @@ from slugify import slugify
 
 from app.routers.v1.auth import get_current_user
 from app.backend.db_depends import get_db
-from app.schemas import CreateCategory
+from app.schemas import CategoryRead, CreateCategory, MessageResponse
 from app.models import Category
 
 router = APIRouter(prefix="/category", tags=["category"])
 
 
 # Получение всех категорий.
-@router.get("/")
+@router.get("/", response_model=list[CategoryRead])
 async def get_all_categories(db: Annotated[AsyncSession, Depends(get_db)]):
     categories = await db.scalars(select(Category).where(Category.is_active == True))
-    return categories.all()
+    all_categories = categories.all()
+    return [CategoryRead.model_validate(category) for category in all_categories]
 
 # Создание категории. Разрешено только для админа.
-@router.post("/")
+@router.post("/", response_model=MessageResponse, status_code=status.HTTP_201_CREATED)
 async def create_category(
         db: Annotated[AsyncSession, Depends(get_db)],
         create_category: CreateCategory,
@@ -32,17 +33,17 @@ async def create_category(
             slug=slugify(create_category.name))
         )
         await db.commit()
-        return {
-            "status_code": status.HTTP_201_CREATED,
-            "transaction": "Success"
-        }
+        return MessageResponse(
+            status_code=status.HTTP_201_CREATED,
+            transaction="Success"
+        )
     else:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You must be admin user for this"
         )
 
-@router.put("/{category_slug}")
+@router.put("/{category_slug}", response_model=MessageResponse)
 async def put_category(
         db: Annotated[AsyncSession, Depends(get_db)],
         category_slug: str,
@@ -62,17 +63,17 @@ async def put_category(
             category.slug = slugify(update_category.name)
         
             await db.commit()
-            return {
-                "status_code": status.HTTP_200_OK,
-                "transaction": "Category update is successful"
-            }
+            return MessageResponse(
+                status_code=status.HTTP_200_OK,
+                transaction="Category update is successful"
+            )
     else:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You must be admin user for this"
         )
 
-@router.delete("/{category_slug}")
+@router.delete("/{category_slug}", response_model=MessageResponse)
 async def delete_category(
         db: Annotated[AsyncSession, Depends(get_db)],
         category_slug: str,
@@ -88,10 +89,10 @@ async def delete_category(
         else:
             category.is_active = False
             await db.commit()
-            return {
-                "status_code": status.HTTP_200_OK,
-                "transaction": "Category delete is successful"
-            }
+            return MessageResponse(
+                status_code=status.HTTP_200_OK,
+                transaction="Category delete is successful"
+            )
     else:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

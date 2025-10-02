@@ -5,7 +5,7 @@ from typing import Annotated
 from slugify import slugify
 
 from app.routers.v1.auth import get_current_user
-from app.schemas import CreateProduct
+from app.schemas import CreateProduct, MessageResponse, ProductRead
 from app.backend.db_depends import get_db
 from app.models import Product, Category
 
@@ -13,7 +13,7 @@ router = APIRouter(prefix="/products", tags=["products"])
 
 
 # Метод получения всех товаров. Разрешен доступ всем.
-@router.get("/")
+@router.get("/", response_model=list[ProductRead])
 async def get_all_products(db: Annotated[AsyncSession, Depends(get_db)]):
     products = await db.scalars(select(Product).where(Product.is_active == True, Product.stock > 0))
     all_products = products.all()
@@ -23,10 +23,10 @@ async def get_all_products(db: Annotated[AsyncSession, Depends(get_db)]):
             detail="Product not found!"
             )
     else:
-        return all_products
+        return [ProductRead.model_validate(product) for product in all_products]
 
 # Метод создания товара. Разрешен доступ администраторам и продавцам.
-@router.post("/", status_code=status.HTTP_201_CREATED)
+@router.post("/", status_code=status.HTTP_201_CREATED, response_model=MessageResponse)
 async def create_product(
         db: Annotated[AsyncSession, Depends(get_db)],
         create_product: CreateProduct,
@@ -52,10 +52,10 @@ async def create_product(
                 is_active=True)
             )
             await db.commit()
-            return {
-                "status_code": status.HTTP_201_CREATED,
-                "transaction": "Product has been created successfully!"
-            }
+            return MessageResponse(
+                status_code=status.HTTP_201_CREATED,
+                transaction="Product has been created successfully!"
+            )
     else:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -63,7 +63,7 @@ async def create_product(
         )
 
 # Метод получения товаров определенной категории. Разрешен доступ всем.
-@router.get("/{category_slug}")
+@router.get("/{category_slug}", response_model=list[ProductRead])
 async def product_by_category(db: Annotated[AsyncSession, Depends(get_db)], category_slug: str):
     category = await db.scalar(select(Category).where(Category.slug == category_slug, Category.is_active == True))
     if category is None:
@@ -82,10 +82,11 @@ async def product_by_category(db: Annotated[AsyncSession, Depends(get_db)], cate
                 Product.stock > 0
             )
         )
-        return products_result.all()
+        products = products_result.all()
+        return [ProductRead.model_validate(product) for product in products]
 
 # Метод получения детальной информации о товаре. Разрешен доступ всем.
-@router.get("/detail/{product_slug}")
+@router.get("/detail/{product_slug}", response_model=ProductRead)
 async def product_detail(db: Annotated[AsyncSession, Depends(get_db)], product_slug: str):
     product = await db.scalar(
         select(Product).where(
@@ -100,10 +101,10 @@ async def product_detail(db: Annotated[AsyncSession, Depends(get_db)], product_s
             detail="Product not found!"
         )
     else:
-        return product
+        return ProductRead.model_validate(product)
 
 # Метод изменения товара. Разрешен доступ администраторам и продавцам, которые добавили этот товар.
-@router.put("/{product_slug}")
+@router.put("/{product_slug}", response_model=MessageResponse)
 async def update_product(
         db: Annotated[AsyncSession, Depends(get_db)],
         product_slug: str,
@@ -135,10 +136,10 @@ async def update_product(
                 product.is_active = True
 
                 await db.commit()
-                return {
-                    "status_code": status.HTTP_200_OK,
-                    "transaction": "Product has been updated successfully!"
-                }
+                return MessageResponse(
+                    status_code=status.HTTP_200_OK,
+                    transaction="Product has been updated successfully!"
+                )
         else:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -151,7 +152,7 @@ async def update_product(
         )
 
 # Метод удаления товара. Разрешен доступ администраторам и продавцам, которые добавили этот товар.
-@router.delete("/{product_slug}")
+@router.delete("/{product_slug}", response_model=MessageResponse)
 async def delete_product(
         db: Annotated[AsyncSession, Depends(get_db)],
         product_slug: str,
@@ -167,10 +168,10 @@ async def delete_product(
         if get_user.get('id') == product.supplier_id or get_user.get('is_admin'):
             product.is_active = False
             await db.commit()
-            return {
-                "status_code": status.HTTP_200_OK,
-                "transaction": "Product has been deleted successfully!"
-            }
+            return MessageResponse(
+                status_code=status.HTTP_200_OK,
+                transaction="Product has been deleted successfully!"
+            )
         else:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
