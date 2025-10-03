@@ -5,7 +5,9 @@
 ## Архитектура
 - Входная точка — `app/main.py`. Версионированные роуты подключаются через `app/main_routers.py` в подприложение `/v1`.
 - Доступ к БД организован через асинхронный `AsyncSession` (SQLAlchemy 2.x) и фабрику сессий в `app/backend/db.py`.
-- Celery и Redis используются для фоновых задач, запуск — отдельными процессами (`celery worker`, `celery beat`).
+- Celery и Redis используются для фоновых задач, запуск — отдельными процессами (`celery worker`, `celery beat`). В Docker Compose
+  доступны сервисы `celery_worker` и `celery_beat`; их можно перезапустить командами `docker compose run --rm celery_worker celery
+  -A app.main.celery worker --loglevel=info` и `docker compose run --rm celery_beat celery -A app.main.celery beat --loglevel=info`.
 - FastAdmin предоставляет административный UI (`/admin`).
 
 ## Код-стайл и зависимости

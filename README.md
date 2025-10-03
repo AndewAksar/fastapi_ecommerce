@@ -73,6 +73,14 @@ docker compose up --build
 ```
 Команда поднимет контейнеры приложения, PostgreSQL, Redis, Celery worker/beat и, при прод-конфигурации, Nginx. Проверьте переменные окружения в `docker-compose*.yml` перед запуском.
 
+### Ручной запуск Celery в Docker-контейнерах
+Если необходимо перезапустить Celery отдельно от остальной инфраструктуры, используйте встроенные команды Compose:
+
+```bash
+docker compose run --rm celery_worker celery -A app.main.celery worker --loglevel=info
+docker compose run --rm celery_beat celery -A app.main.celery beat --loglevel=info
+```
+
 Контейнер `web` получает переменные окружения для подключения к инфраструктуре по умолчанию:
 
 - `DATABASE_URL=postgresql+asyncpg://postgres_user:postgres_password@db:5432/postgres_database`

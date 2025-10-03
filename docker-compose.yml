@@ -13,6 +13,12 @@ services:
     # Открываем порт 8080 внутри и снаружи
     ports:
       - 8080:8080
+    depends_on:
+      - db
+      - redis
+      - celery_worker
+      - celery_beat
+
   db:
     image: postgres:17.5
     volumes:
@@ -21,6 +27,26 @@ services:
       - POSTGRES_USER=postgres_user
       - POSTGRES_PASSWORD=postgres_password
       - POSTGRES_DB=postgres_database
+
+  redis:
+    image: redis:7
+
+  celery_worker:
+    build:
+      context: .
+      dockerfile: ./app/Dockerfile
+    command: celery -A app.main.celery worker --loglevel=info
+    depends_on:
+      - redis
+      - db
+
+  celery_beat:
+    build:
+      context: .
+      dockerfile: ./app/Dockerfile
+    command: celery -A app.main.celery beat --loglevel=info
+    depends_on:
+      - redis
 
 volumes:
   postgres_data:
