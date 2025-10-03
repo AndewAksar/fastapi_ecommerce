@@ -73,6 +73,14 @@ docker compose up --build
 ```
 Команда поднимет контейнеры приложения, PostgreSQL, Redis, Celery worker/beat и, при прод-конфигурации, Nginx. Проверьте переменные окружения в `docker-compose*.yml` перед запуском.
 
+Контейнер `web` получает переменные окружения для подключения к инфраструктуре по умолчанию:
+
+- `DATABASE_URL=postgresql+asyncpg://postgres_user:postgres_password@db:5432/postgres_database`
+- `CELERY_BROKER_URL=redis://redis:6379/0`
+- `CELERY_RESULT_BACKEND=redis://redis:6379/0`
+
+При необходимости переопределите их в `.env` или через параметры запуска `docker compose`.
+
 ## Тестирование
 В проекте отсутствуют автоматические тесты. Рекомендуется добавить Pytest и покрыть CRUD-операции и задачи Celery.
 

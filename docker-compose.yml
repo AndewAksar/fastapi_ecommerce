@@ -6,6 +6,10 @@ services:
       dockerfile: ./app/Dockerfile
     # Запускаем тестовый сервер
     command: uvicorn app.main:app --host 0.0.0.0 --port 8080
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres_user:postgres_password@db:5432/postgres_database
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
     # Открываем порт 8080 внутри и снаружи
     ports:
       - 8080:8080
