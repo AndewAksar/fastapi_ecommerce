@@ -161,38 +161,46 @@ async def add_review(
                 )
             else:
                 async with db.begin():
-                    await db.execute(insert(Review).values(
-                        user_id=user_id,
-                        product_id=create_review.product_id,
-                        comment=create_review.comment,
-                        grade=create_review.grade,
-                        is_active=True)
-                    )
-
-                    # Обновляем рейтинг продукта
                     review_count = await db.scalar(
                         select(func.count(Review.id)).
-                        where(Review.product_id == create_review.product_id, Review.is_active == True)
+                        where(
+                            Review.product_id == create_review.product_id,
+                            Review.is_active == True,
+                        )
                     )
-                    rating = await db.scalar(select(Product.rating).where(Product.id == create_review.product_id))
-                    if rating == 0:
-                        new_rating = create_review.grade
-                    elif rating > 0:
-                        new_rating = round(((product.rating * review_count + create_review.grade) / (review_count + 1)),
-                                           2)
+                    review_count = int(review_count or 0)
+                    current_rating = float(product.rating or 0)
 
+                    if review_count == 0:
+                        current_rating = 0.0
+
+                    new_grade = float(create_review.grade)
+
+                    await db.execute(
+                        insert(Review).values(
+                            user_id=user_id,
+                            product_id=create_review.product_id,
+                            comment=create_review.comment,
+                            grade=create_review.grade,
+                            is_active=True,
+                        )
+                    )
+                    if review_count == 0:
+                        new_rating = new_grade
+                    else:
+                        new_rating = round(
+                            (current_rating * review_count + new_grade) / (review_count + 1),
+                            2,
+                        )
                     await db.execute(
                         update(Product).
                         where(Product.id == create_review.product_id).
                         values(rating=new_rating)
                     )
-
-                    # Сохраняем изменения в базе данных
-                    await db.commit()
-                    return MessageResponse(
-                        status_code=status.HTTP_201_CREATED,
-                        transaction="Review added successfully"
-                    )
+                return MessageResponse(
+                    status_code=status.HTTP_201_CREATED,
+                    transaction="Review added successfully"
+                )
     else:
         raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

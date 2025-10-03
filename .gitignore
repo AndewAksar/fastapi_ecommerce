@@ -120,6 +120,3 @@ celerybeat-schedule
 
 # VSCode
 .vscode/
-
-# Исключаем файл alembic.ini
-alembic.ini

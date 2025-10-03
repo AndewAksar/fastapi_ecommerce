@@ -27,6 +27,20 @@ async def test_add_review_updates_rating(db_session):
             email="jane@example.com",
             hashed_password="hashed",
         )
+        user_3 = User(
+            first_name="Mike",
+            last_name="Smith",
+            username="mikesmith",
+            email="mike@example.com",
+            hashed_password="hashed",
+        )
+        user_4 = User(
+            first_name="Kate",
+            last_name="Smith",
+            username="katesmith",
+            email="kate@example.com",
+            hashed_password="hashed",
+        )
         product = Product(
             name="Smartphone",
             slug="smartphone",
@@ -36,20 +50,46 @@ async def test_add_review_updates_rating(db_session):
             stock=5,
             category=category,
         )
-        db_session.add_all([category, user_1, user_2, product])
+        db_session.add_all([category, user_1, user_2, user_3, user_4, product])
+        await db_session.flush()
+        first_review = Review(
+            user_id=user_1.id,
+            product_id=product.id,
+            comment="Initial review",
+            grade=5,
+            is_active=True,
+        )
+        second_review = Review(
+            user_id=user_2.id,
+            product_id=product.id,
+            comment="Second review",
+            grade=4,
+            is_active=True,
+        )
+        product.rating = 4.5
+        db_session.add_all([first_review, second_review])
 
-    review_payload = CreateReview(product_id=product.id, comment="Great!", grade=5)
-    response = await add_review(db_session, review_payload, {"id": user_1.id})
-    assert response["status_code"] == 201
 
-    product_rating = await db_session.scalar(select(Product.rating).where(Product.id == product.id))
-    assert product_rating == pytest.approx(5.0)
+    new_review = CreateReview(product_id=product.id, comment="Great!", grade=5)
+    response = await add_review(db_session, new_review, {"id": user_3.id})
+    assert response.status_code == 201
 
-    second_review = CreateReview(product_id=product.id, comment="Not bad", grade=3)
-    await add_review(db_session, second_review, {"id": user_2.id})
 
-    updated_rating = await db_session.scalar(select(Product.rating).where(Product.id == product.id))
-    assert updated_rating == pytest.approx(4.0)
+    rating_after_third = await db_session.scalar(
+        select(Product.rating).where(Product.id == product.id)
+    )
+    assert rating_after_third == pytest.approx(4.67, abs=1e-2)
+
+
+    fourth_review = CreateReview(product_id=product.id, comment="Not bad", grade=3)
+    response_second = await add_review(db_session, fourth_review, {"id": user_4.id})
+    assert response_second.status_code == 201
+
+
+    rating_after_fourth = await db_session.scalar(
+        select(Product.rating).where(Product.id == product.id)
+    )
+    assert rating_after_fourth == pytest.approx(4.25, abs=1e-2)
 
 
 @pytest.mark.asyncio
