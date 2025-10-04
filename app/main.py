@@ -4,8 +4,8 @@ from fastapi.templating import Jinja2Templates
 from starlette.websockets import WebSocketDisconnect
 from celery import Celery
 import os
-from fastadmin import fastapi_app as admin_app
 
+from app.admin_panel import router as admin_router
 from app.connection_manager import ConnectionManager
 from app.logging_config import configure_logging, log_middleware
 from app.main_routers import setup_routers
@@ -39,8 +39,8 @@ app = FastAPI(
 )
 
 
-# регистрация приложения админки
-app.mount("/admin", admin_app)
+# регистрация маршрутов админ-панели
+app.include_router(admin_router)
 
 
 # Создаем экземпляр Celery

@@ -1,0 +1,56 @@
+{% extends "admin/base.html" %}
+{% block title %}Редактирование пользователя{% endblock %}
+{% block content %}
+{% set current = form_data or user %}
+<div class="card">
+  <h1>Редактирование пользователя</h1>
+  <form method="post" action="/admin/users/{{ user.id }}">
+    <label>
+      <span>Имя</span>
+      <input type="text" name="first_name" value="{{ current.first_name or '' }}" required>
+    </label>
+    <label>
+      <span>Фамилия</span>
+      <input type="text" name="last_name" value="{{ current.last_name or '' }}" required>
+    </label>
+    <label>
+      <span>Логин</span>
+      <input type="text" name="username" value="{{ current.username }}" required>
+    </label>
+    <label>
+      <span>Email</span>
+      <input type="email" name="email" value="{{ current.email }}" required>
+    </label>
+    <label>
+      <span>Новый пароль</span>
+      <input type="password" name="password" placeholder="Оставьте пустым, чтобы не менять">
+    </label>
+    <label>
+      <input type="checkbox" name="is_active" value="true" {% if current.is_active %}checked{% endif %}>
+      Активен
+    </label>
+    <label>
+      <input type="checkbox" name="is_admin" value="true" {% if current.is_admin %}checked{% endif %}>
+      Администратор
+    </label>
+    <label>
+      <input type="checkbox" name="is_supplier" value="true" {% if current.is_supplier %}checked{% endif %}>
+      Поставщик
+    </label>
+    <label>
+      <input type="checkbox" name="is_customer" value="true" {% if current.is_customer %}checked{% endif %}>
+      Покупатель
+    </label>
+    <button type="submit" class="button primary">Сохранить</button>
+    <a class="button secondary" href="/admin/users">Отмена</a>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Удаление</h2>
+  <p>Удаление пользователя необратимо. Убедитесь, что хотите продолжить.</p>
+  <form method="post" action="/admin/users/{{ user.id }}/delete">
+    <button type="submit" class="button danger" onclick="return confirm('Удалить пользователя {{ user.username }}?');">Удалить</button>
+  </form>
+</div>
+{% endblock %}
