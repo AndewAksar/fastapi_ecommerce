@@ -14,28 +14,29 @@
 ## Структура проекта
 ```
 fastapi_ecommerce/
-├── AGENTS.md                # Описание архитектуры для ИИ-агента
-├── README.md
-├── requirements.txt
-├── docker-compose.yml       # Локальная среда (web, db, redis, celery)
-├── docker-compose.prod.yml  # Прод-конфигурация
-├── nginx/                   # Конфигурация Nginx для прод-режима
+├── AGENTS.md                   # Описание архитектуры для ИИ-агента
+├── README.md                   # Описание проекта
+├── requirements.txt            # Завиисимости проекта
+├── docker-compose.yml          # Локальная среда (web, db, redis, celery)
+├── docker-compose.prod.yml     # Прод-конфигурация
+├── nginx/                      # Конфигурация Nginx для прод-режима
 ├── app/
-│   ├── main.py              # Точка входа FastAPI
-│   ├── main_routers.py      # Настройка подприложений и роутеров
-│   ├── admin.py             # FastAdmin регистрация моделей
+│   ├── main.py                 # Точка входа FastAPI
+│   ├── main_routers.py         # Настройка подприложений и роутеров
+│   ├── admin.py                # FastAdmin регистрация моделей
 │   ├── backend/
-│   │   ├── db.py            # Подключение к БД и базовый класс моделей
-│   │   └── db_depends.py    # Зависимость для AsyncSession
-│   ├── models/              # SQLAlchemy модели домена
+│   │   ├── db.py               # Подключение к БД и базовый класс моделей
+│   │   └── db_depends.py       # Зависимость для AsyncSession
+│   ├── models/                 # SQLAlchemy модели домена
 │   ├── routers/
-│   │   └── v1/              # Версионированные роутеры API
-│   ├── schemas.py           # Pydantic-схемы
-│   ├── tasks.py             # Celery-задачи
-│   ├── templates/           # Jinja2-шаблоны `index.html`, `redirect.html`
-│   └── ...                  # Middleware, менеджеры соединений и т. п.
-├── app/prompts/             # Системные подсказки для ИИ-агента
-└── prompts/tasks/           # Описания задач для генерации ответов
+│   │   └── v1/                 # Версионированные роутеры API
+│   ├── schemas.py              # Pydantic-схемы
+│   ├── tasks.py                # Celery-задачи
+│   ├── templates/              # Jinja2-шаблоны `index.html`, `redirect.html`
+│   └── ...                     # Middleware, менеджеры соединений и т. п.
+├── app/prompts/                # Системные подсказки для ИИ-агента
+└── prompts/tasks/              # Описания задач для генерации ответов
+   └── self_prompt_template.md  # Шаблон самоинструкции перед кодовыми изменениями
 ```
 ## Требования
 - Python 3.11+
@@ -89,6 +90,13 @@ docker compose run --rm celery_beat celery -A app.main.celery beat --loglevel=in
 
 При необходимости переопределите их в `.env` или через параметры запуска `docker compose`.
 
+## Использование self_prompt_template
+- Перед каждым запросом на генерацию или изменение кода агент обязан заполнить файл `prompts/tasks/self_prompt_template.md`,
+  зафиксировав контекст, цель, запланированные шаги и историю итераций.
+- Для каждой итерации следует копировать раздел «Итерация N», заменяя `N` на номер итерации и последовательно заполняя блоки
+  «Запрос», «План», «Результат» и «Выводы».
+- Заполненный шаблон должен сопровождать кодовые изменения и использоваться как отправная точка для анализа прогресса.
+
 ## Тестирование
 В проекте отсутствуют автоматические тесты. Рекомендуется добавить Pytest и покрыть CRUD-операции и задачи Celery.
 
@@ -134,3 +142,7 @@ GET /v1/products/smartphones?limit=5&offset=5&search=pro&min_price=1000&max_pric
 - [FastAPI documentation](https://fastapi.tiangolo.com/)
 - [Celery documentation](https://docs.celeryq.dev/)
 - [SQLAlchemy 2.0 documentation](https://docs.sqlalchemy.org/en/20/)
+
+## Журнал изменений ИИ-агента
+
+Для отслеживания правок, выполненных ИИ-агентами, используйте файл [AI_CHANGELOG.md](AI_CHANGELOG.md). После каждого коммита или pull request, выполненного агентом, добавляйте новую запись по описанному в файле формату.
