@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}Админ-панель{% endblock %}</title>
+  <style>
+    :root {
+      color-scheme: light;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      margin: 0;
+      background: #f5f7fb;
+      color: #1f2937;
+    }
+    header {
+      background: #111827;
+      color: #fff;
+      padding: 1rem 2rem;
+    }
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    nav a {
+      color: inherit;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    nav a:hover {
+      text-decoration: underline;
+    }
+    main {
+      max-width: 960px;
+      margin: 2rem auto;
+      padding: 0 1.5rem 3rem;
+    }
+    .card {
+      background: #fff;
+      border-radius: 0.75rem;
+      padding: 1.75rem;
+      box-shadow: 0 16px 30px -20px rgba(15, 23, 42, 0.65);
+      margin-bottom: 1.75rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      border: 1px solid #d1d5db;
+      padding: 0.75rem 0.85rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: #f3f4f6;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      font-weight: 600;
+      border-radius: 0.6rem;
+      border: none;
+      padding: 0.55rem 1.1rem;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .button.primary {
+      background: #2563eb;
+      color: #fff;
+    }
+    .button.secondary {
+      background: #e5e7eb;
+      color: #1f2937;
+    }
+    .button.danger {
+      background: #dc2626;
+      color: #fff;
+    }
+    .button.link {
+      background: transparent;
+      color: #2563eb;
+      padding: 0;
+      text-decoration: underline;
+    }
+    form.inline {
+      display: inline;
+    }
+    label {
+      display: block;
+      margin-bottom: 0.9rem;
+      font-size: 0.95rem;
+    }
+    label span {
+      display: block;
+      margin-bottom: 0.35rem;
+      font-weight: 600;
+    }
+    input[type="text"],
+    input[type="email"],
+    input[type="password"] {
+      width: 100%;
+      border: 1px solid #cbd5f5;
+      border-radius: 0.5rem;
+      padding: 0.55rem 0.75rem;
+      font-size: 1rem;
+    }
+    input[type="checkbox"] {
+      margin-right: 0.4rem;
+    }
+    .feedback {
+      border-radius: 0.6rem;
+      padding: 0.85rem 1rem;
+      margin-bottom: 1rem;
+    }
+    .feedback.error {
+      background: #fee2e2;
+      border: 1px solid #fecaca;
+      color: #991b1b;
+    }
+    .feedback.success {
+      background: #dcfce7;
+      border: 1px solid #bbf7d0;
+      color: #166534;
+    }
+  </style>
+</head>
+<body>
+<header>
+  <nav>
+    <a href="/admin/login">Вход</a>
+    <a href="/admin/users">Пользователи</a>
+  </nav>
+</header>
+<main>
+  {% if errors %}
+    <div class="feedback error">
+      <ul>
+        {% for error in errors %}
+          <li>{{ error }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+  {% if message %}
+    <div class="feedback success">{{ message }}</div>
+  {% endif %}
+  {% block content %}{% endblock %}
+</main>
+</body>
+</html>
